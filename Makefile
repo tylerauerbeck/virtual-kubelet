@@ -185,4 +185,4 @@ fmt:
 
 .PHONY: lint
 lint: $(gobin_tool)
-	gobin -run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.33.0 run ./...
+	gobin -run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.33.0 run ./... --timeout=5m

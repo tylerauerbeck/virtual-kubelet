@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '*' 
+  pull_request:
+    branches:
+      - '*'
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: "on"
+      GOPROXY: "https://proxy.golang.org"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.15'
+          check-latest: true
+          cache: true
+
+      - name: Go Vet
+        run: V=1 CI=1 make vet
+
+      - name: Go Lint
+        run: make lint
+
+      - name: Dependencies
+        run: scripts/validate/gomod.sh
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: "on"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.16'
+          check-latest: true
+          cache: true
+
+      - name: Go Build
+        run: V=1 make build
+
+      - name: Get gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Run Tests
+        env:
+          GOTEST: gotestsum -- -timeout=9m
+          GOTESTSUM_JUNITFILE: output/unit/results.xml
+          GODEBUG: cgocheck=2
+        run: |
+          mkdir -p output/unit
+          V=1 make test envtest
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: "output/**/*.xml"
