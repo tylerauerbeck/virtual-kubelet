@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - '*' 
@@ -71,3 +70,62 @@ jobs:
         if: always()
         with:
           files: "output/**/*.xml"
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    needs: [test, validate]
+    env:
+      GO111MODULE: "on"
+      MINIKUBE_VERSION: v1.16.0
+      KUBERNETES_VERSION: v1.20.1
+      CHANGE_MINIKUBE_NONE_USER: true
+      MINIKUBE_WANTUPDATENOTIFICATION: false
+      MINIKUBE_WANTREPORTERRORPROMPT: false
+      SKAFFOLD_VERSION: v1.17.2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.16'
+          check-latest: true
+          cache: true
+      
+      - name: Setup Minikube
+        uses: medyagh/setup-minikube
+        with:
+          minikube-version: ${{ env.MINIKUBE_VERSION }}
+          kubernetes-version: ${{ env.KUBERNETES_VERSION }}
+          driver: none
+          cpus: 2
+          memory: 2048m
+          
+      - name: Setup Skaffold
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/${SKAFFOLD_VERSION}/skaffold-linux-amd64
+          chmod +x skaffold
+          sudo mv skaffold /usr/local/bin/
+
+      - name: Run e2e
+        env:
+          GOTEST: gotestsum --
+        run: |
+          mkdir -p output/e2e
+          export GOTESTSUM_JUNITFILE="$(pwd)/output/e2e/results.xml"
+          export PATH="${GOPATH}/bin:${PATH}"
+          go install gotest.tools/gotestsum@latest
+          make e2e
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: "output/**/*.xml"
+
+      - name: Collect logs on vkubelet-mock-0 failure
+        run: |
+          kubectl logs vkubelet-mock-0
+        if: failure
