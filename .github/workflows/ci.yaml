@@ -95,7 +95,7 @@ jobs:
           cache: true
       
       - name: Setup Minikube
-        uses: medyagh/setup-minikube
+        uses: medyagh/setup-minikube@v0.0.8
         with:
           minikube-version: ${{ env.MINIKUBE_VERSION }}
           kubernetes-version: ${{ env.KUBERNETES_VERSION }}
