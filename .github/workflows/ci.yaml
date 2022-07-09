@@ -128,4 +128,4 @@ jobs:
       - name: Collect logs on vkubelet-mock-0 failure
         run: |
           kubectl logs vkubelet-mock-0
-        if: failure
+        if: failure()
